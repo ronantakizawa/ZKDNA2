@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+  <title>Paternity Test Zero-Knowledge Proof</title>
+</head>
+<body>
+
+  <h1>Paternity Test Zero-Knowledge Proof</h1>
+
+  <p>
+    This Zero-Knowledge Proof (ZKP) system allows a user to prove that a child shares a sufficient number of genetic markers with a supposed parent without revealing any sensitive genetic information. Specifically, it proves that the number of matching genetic markers between the parent and child meets or exceeds a certain threshold, indicating likely parenthood.
+  </p>
+
+  <h3>What are Genetic Markers?</h3>
+  <p>
+    Genetic markers are specific sequences within DNA that are used to identify similarities between individuals. Each marker can represent a specific gene variant, allele, or DNA region, helping to compare genetic traits between a parent and child. For this ZKP, each genetic marker is represented by a number, making it easy to perform comparisons without revealing actual genetic details.
+  </p>
+
+  <h3>How It Works:</h3>
+  <ul>
+    <li><strong>Genetic Markers (M_p and M_c):</strong> Arrays representing the genetic markers of the parent and child, respectively. These numbers are placeholders for real genetic traits. Each position in the array corresponds to a specific genetic marker.</li>
+    <li><strong>Blinding Factors (r_p and r_c):</strong> Random numbers added to each genetic marker to protect privacy. Blinding factors prevent the exact genetic markers from being exposed, as only the combined value is used in commitments. Each blinding factor is unique for each marker, ensuring data security.</li>
+    <li><strong>Commitments (C_p and C_c):</strong> Hashes of the genetic markers combined with blinding factors, ensuring privacy. The commitments allow the verification of genetic similarity without directly revealing genetic markers.</li>
+    <li><strong>Threshold (T):</strong> The minimum number of matching markers required to indicate likely parenthood. In this example, T = 7, meaning that at least 7 out of 10 markers must match for the proof to verify likely parenthood.</li>
+  </ul>
+
+  <h3>Instructions:</h3>
+  <p>Enter the genetic markers and blinding factors for both the parent and the child. Each array should contain exactly 10 integers separated by commas. The genetic markers should be integers representing specific genetic traits or markers.</p>
+
+  <h3>Examples of Valid Inputs:</h3>
+  <p><strong>Example 1 (Passing Verification):</strong></p>
+  <ul>
+    <li>Parent's Markers (M_p): 23,45,67,89,12,34,56,78,90,11</li>
+    <li>Child's Markers (M_c): 23,45,67,88,12,34,56,77,90,10</li>
+    <li>Parent's Blinding Factors (r_p): 1023,2045,3067,4089,5012,6034,7056,8078,9090,10011</li>
+    <li>Child's Blinding Factors (r_c): 1123,2245,3367,4489,5512,6634,7756,8878,9990,11011</li>
+  </ul>
+  <p>This example results in 7 matching markers, meeting the threshold.</p>
+
+  <p><strong>Example 2 (Failing Verification):</strong></p>
+  <ul>
+    <li>Parent's Markers (M_p): 23,45,67,89,12,34,56,78,90,11</li>
+    <li>Child's Markers (M_c): 24,46,68,88,13,35,57,77,91,10</li>
+    <li>Parent's Blinding Factors (r_p): Same as above</li>
+    <li>Child's Blinding Factors (r_c): Same as above</li>
+  </ul>
+  <p>This example results in fewer than 7 matching markers, failing the threshold.</p>
+
+  <hr>
+
+  <!-- Input Fields for ZK Proof -->
+  <h3>Enter Your Data:</h3>
+  
+  <label for="M_p">Parent's Genetic Markers (M_p):</label><br>
+  <textarea id="M_p" rows="2" cols="60">23,45,67,89,12,34,56,78,90,11</textarea><br><br>
+
+  <label for="M_c">Child's Genetic Markers (M_c):</label><br>
+  <textarea id="M_c" rows="2" cols="60">23,45,67,88,12,34,56,77,90,10</textarea><br><br>
+
+  <label for="r_p">Parent's Blinding Factors (r_p):</label><br>
+  <textarea id="r_p" rows="2" cols="60">1023,2045,3067,4089,5012,6034,7056,8078,9090,10011</textarea><br><br>
+
+  <label for="r_c">Child's Blinding Factors (r_c):</label><br>
+  <textarea id="r_c" rows="2" cols="60">1123,2245,3367,4489,5512,6634,7756,8878,9990,11011</textarea><br><br>
+
+  <button id="bGenProof">Create Proof</button>
+
+  <pre class="proof"><strong>Proof:</strong> <code id="proof"></code></pre>
+  <pre class="proof"><strong>Result:</strong> <code id="result"></code></pre>
+  <pre class="error"><strong>Error:</strong> <code id="error"></code></pre>
+
+  <!-- Include snarkjs library -->
+  <script src="snarkjs.min.js"></script>
+
+  <script>
+    const proofComponent = document.getElementById('proof');
+    const resultComponent = document.getElementById('result');
+    const errorComponent = document.getElementById('error');
+    const bGenProof = document.getElementById("bGenProof");
+
+    bGenProof.addEventListener("click", calculateProof);
+
+    async function calculateProof() {
+      // Clear previous output
+      proofComponent.innerHTML = "";
+      resultComponent.innerHTML = "";
+      errorComponent.innerHTML = "";
+
+      try {
+        // Get user inputs
+        const M_p = document.getElementById('M_p').value.split(',').map(Number);
+        const M_c = document.getElementById('M_c').value.split(',').map(Number);
+        const r_p = document.getElementById('r_p').value.split(',').map(Number);
+        const r_c = document.getElementById('r_c').value.split(',').map(Number);
+
+        // Input validation
+        if (M_p.length !== 10 || M_c.length !== 10) {
+          throw new Error("M_p and M_c must each have exactly 10 values.");
+        }
+        if (r_p.length !== 10 || r_c.length !== 10) {
+          throw new Error("r_p and r_c must each have exactly 10 values.");
+        }
+
+        // Prepare the input object
+        const input = {
+          M_p,
+          M_c,
+          r_p,
+          r_c
+        };
+
+        // Generate proof
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+          input,
+          "circuit.wasm",
+          "circuit_final.zkey"
+        );
+
+        // Display proof
+        proofComponent.innerHTML = JSON.stringify(proof, null, 2);
+
+        // Fetch and parse verification key
+        const vkey = await fetch("verification_key.json").then(res => res.json());
+
+        // Verify proof
+        const isValid = await snarkjs.groth16.verify(vkey, publicSignals, proof);
+
+        resultComponent.innerHTML = isValid ? "Proof is valid. Verification OK." : "Proof is invalid. Verification Failed.";
+
+      } catch (error) {
+        // Display error
+        errorComponent.innerHTML = error.message || "An unknown error occurred.";
+        console.error(error);
+      }
+    }
+  </script>
+
+</body>
+</html>
